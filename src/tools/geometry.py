@@ -49,21 +49,28 @@ def find_near_rects(rect1_center, rect2_center) -> bool:
 
 
 def merge_rects(rects):
-    '''Merges the rectangles into the biggest possible one.
-                Rectangles are [x1, y1, x2, y2]'''
+    '''Merges intersecting rectangles into the biggest possible one.
+       Rectangles are [x1, y1, x2, y2]'''
+
     def rects_overlap(r1, r2):
-        return not (r1[0] > r2[2] or r1[2] < r2[0] or r1[1] > r2[3] or r1[3] < r2[1])
+        # Проверяем, пересекаются ли два прямоугольника
+        return not (r1[0] < r2[2] or r1[2] > r2[0] or r1[1] < r2[3] or r1[3] > r2[1])
 
     merged = []
+
     for r in rects:
         found_overlap = False
         for i, m in enumerate(merged):
             if rects_overlap(m, r):
+                # Объединяем пересекающиеся прямоугольники
                 merged[i] = [min(m[0], r[0]), min(m[1], r[1]), max(m[2], r[2]), max(m[3], r[3])]
                 found_overlap = True
                 break
+
+        # Если пересечений не найдено, добавляем прямоугольник в список
         if not found_overlap:
             merged.append(r)
+
     return merged
 
 

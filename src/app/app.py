@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-from src.motion_detection.CV_detecting import detect_motion_cv
-from src.motion_detection.custom_detecting import detect_motion
+from src.motion_detection.CV_detecting import detect_motion_cv, detect_motion_with_structure_tensor
 
 lk_params = dict(winSize=(15, 15),
                  maxLevel=2,
@@ -19,14 +18,11 @@ class App:
         self.frame_idx = 0
 
     def run(self):
-        bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=110, varThreshold=130)  # 180, 120
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=180, varThreshold=100, detectShadows=False)  # 180, 120
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
 
         ret, prev_fr = self.cam.read()
-        prev_mask = bg_subtractor.apply(prev_fr)
-        prev_fr = prev_fr[300:500, 500:700]
-        prev_gray = cv2.cvtColor(prev_fr, cv2.COLOR_BGR2GRAY)
-
+        prev_mask = detect_motion_with_structure_tensor(prev_fr, bg_subtractor, kernel)
         iteri = 0
 
         if not self.cam.isOpened():
@@ -36,28 +32,24 @@ class App:
             _ret, frame = self.cam.read()
             if not _ret:
                 break
-            cur_frame = frame[300:500, 500:700]
-            cur_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            cur_frame_gray = cur_frame_gray[300:500, 500:700]
 
-            if iteri == 0 or iteri % 5 == 0:
-                mask = bg_subtractor.apply(frame)
+            if iteri == 0 or iteri % 2 == 0:
+                combined_mask = detect_motion_with_structure_tensor(frame, bg_subtractor, kernel)
             else:
-                mask = prev_mask
+                combined_mask = prev_mask
 
-            frame_gray, vis, rect_centers, mask_new = detect_motion_cv(frame, kernel, mask)
+            vis, rect_centers, mask_new = detect_motion_cv(frame, combined_mask)
             # frame_gray, vis, rect_centers, mask_new = detect_motion(cur_frame, prev_fr)
 
             # Optical flow
-            vis = self.run_optical_flow(prev_gray, frame_gray, vis, rect_centers)
+            # vis = self.run_optical_flow(prev_gray, frame_gray, vis, rect_centers)
 
-            prev_gray = frame_gray
-            prev_fr = cur_frame
+            cv2.imshow('Motion with Structure Tensor', combined_mask)
             cv2.imshow('Tracking', vis)
             cv2.imshow('Mask', mask_new)
             self.frame_idx += 1
             iteri += 1
-            prev_mask = mask
+            prev_mask = combined_mask
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
@@ -67,7 +59,6 @@ class App:
 
         self.cam.release()
         cv2.destroyAllWindows()
-
 
     def run_optical_flow(self, prev_gray, frame_gray, vis, rect_centers):
         if len(self.tracks) > 0:
