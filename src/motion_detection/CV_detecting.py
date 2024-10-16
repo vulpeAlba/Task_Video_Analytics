@@ -4,24 +4,6 @@ from src.tools.geometry import *
 import cv2
 
 
-'''# Функция для вычисления HOG дескрипторов и их суммирования
-def compute_hog_entropy(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    fd, hog_image = hog(gray, orientations=9, pixels_per_cell=(8, 8),
-                        cells_per_block=(2, 2), visualize=True, block_norm='L2-Hys')
-    return np.mean(hog_image)
-
-
-def filter_shadows_hsv(frame, s_threshold=255, v_threshold=255, h_threshold=255):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-
-    # Фильтрация по низкой насыщенности и яркости для теней
-    shadow_mask = (s < s_threshold) & (v < v_threshold) & (h < h_threshold)
-    return shadow_mask.astype(np.uint8) * 255
-'''
-
-
 def detect_motion_cv(frame, mask):
     '''Detect motion and filter shadows based on HOG and HSV'''
 
@@ -47,32 +29,6 @@ def detect_motion_cv(frame, mask):
             cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     return vis, rect_centers, mask
-
-
-def structure_tensor(frame, window_size=7):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Вычисляем градиенты по x и y
-    Ix = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=5)
-    Iy = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=5)
-
-    Ixx = Ix * Ix
-    Iyy = Iy * Iy
-    Ixy = Ix * Iy
-
-    # Усреднение значений на основе окна
-    Sxx = cv2.GaussianBlur(Ixx, (window_size, window_size), 0)
-    Syy = cv2.GaussianBlur(Iyy, (window_size, window_size), 0)
-    Sxy = cv2.GaussianBlur(Ixy, (window_size, window_size), 0)
-
-    # Вычисление следа и детерминанта матрицы
-    trace = Sxx + Syy
-    det = Sxx * Syy - Sxy * Sxy
-
-    # Вычисление карты структуры (анизотропия текстуры)
-    structure_map = det / (trace + 1e-6)  # Чтобы избежать деления на ноль
-
-    return structure_map
 
 
 def compute_structure_tensor(image, ksize=3, sigmaX=1):
@@ -108,7 +64,7 @@ def compute_eigenvalues(Ixx, Ixy, Iyy):
 def filter_shadows_hsv1(frame):
     # Преобразование изображения в HSV
 
-    lower_shadow = np.array([0, 0, 0])  # Низкий уровень насыщенности и яркости
+    lower_shadow = np.array([0, 0, 0])
     upper_shadow = np.array([150, 80, 255])
 
     # Создаём маску для исключения теней
@@ -120,10 +76,7 @@ def filter_shadows_hsv1(frame):
 def detect_motion_with_structure_tensor(frame, bg_subtractor, kernel, eigenvalue_threshold=120, ksize=3, sigmaX=2):
     '''Detect motion and filter shadows using structure tensor and HSV'''
 
-    # Преобразуем изображение в градации серого
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Применяем фоновую разницу
     mask = bg_subtractor.apply(frame)
 
     # Морфологические операции для улучшения маски

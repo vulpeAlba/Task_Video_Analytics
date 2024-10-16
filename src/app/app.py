@@ -46,7 +46,6 @@ class App:
 
             cv2.imshow('Motion with Structure Tensor', combined_mask)
             cv2.imshow('Tracking', vis)
-            cv2.imshow('Mask', mask_new)
             self.frame_idx += 1
             iteri += 1
             prev_mask = combined_mask
